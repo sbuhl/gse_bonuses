@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            Quick demo setting to have a working Bonuses configuration.
+            For demo purpose, create a "Bonus" product to use for bonus
+             and also select 'Vendor Bills' as bonuses journal.
+         -->
+        <record id="bonus_product" model="product.product">
+            <field name="name">Bonus</field>
+            <field name="list_price">0.0</field>
+            <field name="standard_price">0.0</field>
+            <field name="type">service</field>
+            <field name="default_code">COMM</field>
+            <field name="categ_id" ref="product.cat_expense"/>
+        </record>
+        <record id="base.main_company" model="res.company">
+            <field name="rate">5.0</field>
+            <field name="bonus_product_id" ref="gse_bonuses.bonus_product"/>
+            <field name="bonus_journal_id" search="[
+                '|',
+                ('name', '=', 'Vendor Bills'),
+                ('type', '=', 'purchase'),
+            ]"/>
+        </record>
+    </data>
+</odoo>

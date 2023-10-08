@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_hr_bonus_form" model="ir.ui.view">
+        <field name="name">gse.bonus.form</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <form string="Bonuses" class="oe_form_nomargin">
+                <header>
+                    <field name="state" widget="statusbar" on_change="1" modifiers="{&quot;readonly&quot;: true}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                    </div>
+                    <div class="oe_title">
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="move_bonus_from" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="company_id" groups="base.group_multi_company" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" />
+                            <field name="amount" readonly="1" force_save="1"/>
+                            <field name="move_bonus_vendeur" attrs="{'invisible': [('move_bonus_vendeur', '=', False)], 'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_hr_bonus_tree" model="ir.ui.view">
+        <field name="name">gse.bonus.tree</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state == 'draft'" decoration-muted="state == 'cancel'">
+                <field name="create_date"/>
+                <field name="move_bonus_from"/>
+                <field name="user_id"/>
+                <field name="currency_id"/>
+                <field name="amount" string="Bonus" sum="Bonus Total"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_hr_bonus_pivot" model="ir.ui.view">
+        <field name="name">gse.bonus.pivot</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <pivot string="Bonuses">
+                <field name="create_date" type="row" interval="week"/>
+                <field name="state" type="row"/>
+                <field name="user_id" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_hr_bonus_pivot_graph" model="ir.ui.view">
+        <field name="name">gse.bonus.graph</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <graph string="Bonuses" stacked="True">
+                <field name="create_date" type="row" interval="week"/>
+                <field name="state" type="row"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_hr_bonus_search" model="ir.ui.view">
+        <field name="name">gse.bonus.search</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <search string="Search Bonus">
+                <field name="move_bonus_from"/>
+                <field name="user_id"/>
+                <separator/>
+                <filter string="New" name="new" domain="[('state', '=', 'draft')]"/>
+                <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'done')]"/>
+                <filter string="Paid" name="paid" domain="[('state', '=', 'paid')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state', '=', 'cancel')]"/>
+                <group expand="0" name="group_by" string="Group By">
+                    <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter name="group_user" string="User" domain="[]" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_invoice" string="Invoice" domain="[]" context="{'group_by': 'move_bonus_from'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_hr_bonus" model="ir.actions.act_window">
+        <field name="name">Bonuses</field>
+        <field name="res_model">gse.bonus</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+    </record>
+
+    <!-- Menu Items in Sales (sale_management) and Field Services (industry_fsm) -->
+    <menuitem id="menu_bonus_sale"
+        name="Bonuses"
+        parent="sale.sale_menu_root"
+        sequence="45"
+        action="gse_bonuses.action_hr_bonus"
+        />
+    <menuitem id="menu_bonus_fsm"
+        name="Bonuses"
+        parent="industry_fsm.fsm_menu_root"
+        sequence="45"
+        action="gse_bonuses.action_hr_bonus"
+        />
+
+</odoo>

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_bonus_user,bonus user,model_gse_bonus,base.group_user,1,0,0,0
+access_bonus_manager,bonus manager,model_gse_bonus,account.group_account_manager,1,1,1,1
