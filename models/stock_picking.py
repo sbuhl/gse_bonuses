@@ -12,7 +12,7 @@ class StockPicking(models.Model):
         #       `service_tracking` SOL.
         #       Looks like there is no direct relation to a SOL from a task,
         #       would need an inverse field from SOL.task_id, not worth it?
-        for picking in self.sudo().mapped('sale_id'):
-            self.env['gse.bonus'].generate_bonuses(picking.sale_id)
+        for order_sudo in self.sudo().sale_id:
+            self.env['gse.bonus'].generate_bonuses(order_sudo)
 
         return res

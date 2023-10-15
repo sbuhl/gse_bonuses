@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_order_form_inherit_gse_bonuses" model="ir.ui.view">
+        <field name="name">sale.order.form.gse.bonuses</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_view_invoice']" position="before">
+                <button type="object" name="action_view_bonuses" class="oe_stat_button" icon="fa-gift" attrs="{'invisible': [('bonuses_count', '=', 0)]}" groups="account.group_account_manager">
+                    <field name="bonuses_count" widget="statinfo" string="Bonuses"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

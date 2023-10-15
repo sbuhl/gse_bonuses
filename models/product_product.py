@@ -2,6 +2,6 @@ from odoo import fields, models
 
 
 class Product(models.Model):
-    _inherit = "product.product"
+    _inherit = "product.template"
 
-    rate = fields.Float('Rate')  # TODO: fallback on company rate
+    rate = fields.Float('Bonus Rate')  # TODO: fallback on company rate

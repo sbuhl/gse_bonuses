@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 
-"""
-TODO:
-- Quid if task/payment/delivery canceled?
-- If SO is not in $, generate commission not in $ but vendor bill should be in $
-"""
-
 {
     'name': 'Bonuses GSE',
     'author': "Sébastien Bühl, Shortcut1337",
@@ -69,9 +63,9 @@ TODO:
     """,
     'depends': [
         'industry_fsm',
-        'project',
-        'sale_management',
+        'sale_project',
         'sale_stock',
+        'sale_timesheet',  # should be autoinstalled as `industry_fsm` depends from `hr_timesheet`, but still..
     ],
     'demo': [
         'data/demo.xml',
@@ -81,7 +75,9 @@ TODO:
         'security/ir.model.access.csv',
         'views/account_views.xml',
         'views/bonus_views.xml',
+        'views/product_views.xml',
         'views/res_config_settings_views.xml',
+        'views/sale_order_views.xml',
     ],
     'installable': True,
 }

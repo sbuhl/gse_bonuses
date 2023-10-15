@@ -15,7 +15,7 @@
             <field name="categ_id" ref="product.cat_expense"/>
         </record>
         <record id="base.main_company" model="res.company">
-            <field name="rate">5.0</field>
+            <field name="bonus_rate">5.0</field>
             <field name="bonus_product_id" ref="gse_bonuses.bonus_product"/>
             <field name="bonus_journal_id" search="[
                 '|',
