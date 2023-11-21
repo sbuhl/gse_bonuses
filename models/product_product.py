@@ -1,7 +1,9 @@
-from odoo import fields, models
+from odoo import models
 
 
 class Product(models.Model):
-    _inherit = "product.template"
+    _inherit = 'product.product'
 
-    rate = fields.Float('Bonus Rate')  # TODO: fallback on company rate
+    def get_bonus_rate(self):
+        self.ensure_one()
+        return self.bonus_rate or self.env.company.bonus_rate

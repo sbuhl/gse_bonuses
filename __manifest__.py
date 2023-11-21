@@ -65,7 +65,7 @@
         'industry_fsm',
         'sale_project',
         'sale_stock',
-        'sale_timesheet',  # should be autoinstalled as `industry_fsm` depends from `hr_timesheet`, but still..
+        'sale_timesheet',  # should be auto-installed as `industry_fsm` depends from `hr_timesheet`, but still..
     ],
     'demo': [
         'data/demo.xml',

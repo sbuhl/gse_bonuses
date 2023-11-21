@@ -5,7 +5,7 @@
     <record id="gse_bonus_rule" model="ir.rule">
         <field name="name">Bonus User</field>
         <field name="model_id" ref="model_gse_bonus"/>
-        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="domain_force">[('employee_id', '=', user.employee_id.id)]</field>
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
     </record>
     <record id="gse_bonus_rule_manager" model="ir.rule">

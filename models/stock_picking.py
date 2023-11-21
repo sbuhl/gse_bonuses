@@ -8,8 +8,8 @@ class StockPicking(models.Model):
         res = super()._action_done()
 
         # For the pickings related to a sale order, generate bonuses
-        # TODO: Check if possible to exclude picking not related to
-        #       `service_tracking` SOL.
+        # TODO: Perf possible imp: Check if possible to exclude picking not
+        #       related to `service_tracking` SOL.
         #       Looks like there is no direct relation to a SOL from a task,
         #       would need an inverse field from SOL.task_id, not worth it?
         for order_sudo in self.sudo().sale_id:

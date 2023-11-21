@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="sale.product_template_form_view"/>
         <field name="arch" type="xml">
             <field name="service_tracking" position="after">
-                <field name="rate" attrs="{'invisible': [('type', '!=', 'service')]}"/>
+                <field name="bonus_rate" attrs="{'invisible': [('type', '!=', 'service')]}"/>
             </field>
         </field>
     </record>
