@@ -1,5 +1,10 @@
+
+import logging
+
 from odoo import fields, models
 from odoo.exceptions import UserError
+
+logger = logging.getLogger(__name__)
 
 
 class Bonus(models.Model):
@@ -26,6 +31,10 @@ class Bonus(models.Model):
         Move = self.env['account.move']
 
         if not order:
+            return
+
+        if not (order.date_order > fields.Datetime.from_string('2023-05-31')):
+            logger.info("Impossible de générer un bonus pour une SO validée avant le 1er juin 2023 (SO %s %s).", order.id, order.date_order)
             return
 
         journal = order.company_id.bonus_journal_id

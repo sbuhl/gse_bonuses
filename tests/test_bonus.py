@@ -217,4 +217,3 @@ class TestBonus(common.TransactionCase):
 
         # TEST 5: Generating the bonus when no timesheet is set should not fail
         simulate_full_flow(add_timesheets=False)
-        self.env.cr.commit()
