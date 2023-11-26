@@ -7,6 +7,9 @@
             <form string="Bonuses" class="oe_form_nomargin">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_invoices" class="oe_stat_button" icon="fa-gift" attrs="{'invisible': [('vendor_bill_move_count', '=', 0)]}" groups="account.group_account_manager">
+                            <field name="vendor_bill_move_count" widget="statinfo" string="Invoices"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                     </div>
@@ -20,7 +23,7 @@
                             <field name="currency_id" readonly="1"/>
                             <field name="amount" readonly="1"/>
                             <field name="order_id" readonly="1"/>
-                            <field name="vendor_bill_move_id" readonly="1"/>
+                            <!-- <field name="vendor_bill_move_ids" readonly="1"/> -->
                         </group>
                     </group>
                 </sheet>
@@ -93,6 +96,15 @@
     <record id="action_gse_bonus" model="ir.actions.act_window">
         <field name="name">Bonuses</field>
         <field name="res_model">gse.bonus</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="context">{
+            'create': False,
+        }</field>
+    </record>
+
+    <record id="action_view_invoices" model="ir.actions.act_window">
+        <field name="name">Invoices</field>
+        <field name="res_model">account.move</field>
         <field name="view_mode">tree,form,pivot,graph</field>
         <field name="context">{
             'create': False,

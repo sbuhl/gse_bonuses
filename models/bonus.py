@@ -1,7 +1,7 @@
-
+import ast
 import logging
 
-from odoo import fields, models
+from odoo import api, fields, models, Command
 from odoo.exceptions import UserError
 
 logger = logging.getLogger(__name__)
@@ -12,10 +12,10 @@ class Bonus(models.Model):
     _description = 'Bonus'
     _order = 'id desc'
 
-    timesheet_id = fields.Many2one('account.analytic.line', required=1)
+    timesheet_id = fields.Many2one('account.analytic.line', required=1, copy=True)
     so_line = fields.Many2one(related='timesheet_id.so_line')
-    employee_id = fields.Many2one(related='timesheet_id.employee_id', store=True, required=1)
-    order_id = fields.Many2one(related='so_line.order_id', store=True, required=1)
+    employee_id = fields.Many2one(related='timesheet_id.employee_id', store=True, required=1, copy=True)
+    order_id = fields.Many2one(related='so_line.order_id', store=True, required=1, copy=True)
     company_id = fields.Many2one(related='order_id.company_id')
     currency_id = fields.Many2one(related='order_id.currency_id')
 
@@ -24,22 +24,37 @@ class Bonus(models.Model):
     # TODO: Maybe need to convert amount into company amount, see `_compute_amount_company`
     amount = fields.Monetary(string='Amount', required=1)
 
-    vendor_bill_move_id = fields.Many2one(related='vendor_bill_move_line_id.move_id', ondelete='restrict')
-    vendor_bill_move_line_id = fields.Many2one('account.move.line', ondelete='restrict')
+    vendor_bill_move_ids = fields.Many2many(
+        'account.move', compute='_compute_vendor_bill_move_ids',
+        help="Vendor bill but also Vendor bill credit note")
+    vendor_bill_move_count = fields.Integer(string='# Invoices', compute='_compute_vendor_bill_move_count', groups="account.group_account_manager")
+    vendor_bill_move_line_ids = fields.Many2many('account.move.line', ondelete='restrict')
+
+    @api.depends('vendor_bill_move_ids')
+    def _compute_vendor_bill_move_count(self):
+        for bonus in self:
+            bonus.vendor_bill_move_count = len(bonus.vendor_bill_move_ids)
+
+    @api.depends('vendor_bill_move_line_ids')
+    def _compute_vendor_bill_move_ids(self):
+        for bonus in self:
+            bonus.vendor_bill_move_ids = bonus.vendor_bill_move_line_ids.move_id
+
+    def action_view_invoices(self):
+        action = self.env['ir.actions.act_window']._for_xml_id('gse_bonuses.action_view_invoices')
+        # action['display_name'] = self.name
+        action['domain'] = [('id', 'in', self.vendor_bill_move_ids.ids)]
+        context = action['context'].replace('active_id', str(self.id))
+        action['context'] = ast.literal_eval(context)
+        return action
 
     def generate_bonuses(self, order):
-        Move = self.env['account.move']
-
         if not order:
             return
 
         if not (order.date_order > fields.Datetime.from_string('2023-05-31')):
             logger.info("Impossible de générer un bonus pour une SO validée avant le 1er juin 2023 (SO %s %s).", order.id, order.date_order)
             return
-
-        journal = order.company_id.bonus_journal_id
-        if not journal or not journal.default_account_id:
-            raise UserError("Le journal pour les bonus n'est pas configuré")
 
         order.ensure_one()
 
@@ -102,37 +117,54 @@ class Bonus(models.Model):
                     'order_id': timesheet.order_id.id,
                     'employee_id': timesheet.employee_id.id,
                 })
-                # Create or update vendor bill with new bonus
-                partner_id = bonus.employee_id.address_home_id.id
-                if not partner_id:
-                    raise UserError("L'employé n'a pas d'adresse enregistrée.")
-                move = Move.search([
-                    ('company_id', '=', bonus.company_id.id),
-                    ('move_type', '=', 'in_invoice'),
-                    ('partner_id', '=', partner_id),
-                    ('journal_id', '=', journal.id),
-                    ('state', '=', 'draft'),
-                ], limit=1)
-                if not move:
-                    move = Move.create({
-                        'company_id': bonus.company_id.id,
-                        'move_type': 'in_invoice',
-                        'partner_id': partner_id,
-                        'journal_id': journal.id,
-                        'invoice_date': bonus.write_date,
-                        'date': bonus.write_date,
-                        'ref': 'Commission for SO %s' % bonus.order_id.name,
-                    })
-                move_line = self.env['account.move.line'].create({
-                    'move_id': move.id,
-                    'product_id': bonus.company_id.bonus_product_id.id,
-                    'name': 'Commission for SO %s (SOL: %s)' % (bonus.order_id.name, bonus.so_line.name),
-                    'price_unit': bonus.amount,
-                    'tax_ids': None,
-                })
-                bonus.write({
-                    'vendor_bill_move_line_id': move_line.id,
-                })
+                bonus.add_bonus_on_vendor_bill()
 
             # Safety check
             assert task_total_hours == total_timesheet_unit_amount, "Total hours spent on task does not match timesheet sum."
+
+    def add_bonus_on_vendor_bill(self, credit_note=False):
+        """ Create or update vendor bill with new bonus. """
+        Move = self.env['account.move'].with_context(skip_invoice_sync=False)
+
+        self.ensure_one()
+
+        journal = self.order_id.company_id.bonus_journal_id
+        if not journal or not journal.default_account_id:
+            raise UserError("Le journal pour les bonus n'est pas configuré")
+
+        partner_id = self.employee_id.address_home_id.id
+        if not partner_id:
+            raise UserError("L'employé n'a pas d'adresse enregistrée.")
+
+        move_type = 'in_refund' if credit_note else 'in_invoice'
+
+        move = Move.search([
+            ('company_id', '=', self.company_id.id),
+            ('move_type', '=', move_type),
+            ('partner_id', '=', partner_id),
+            ('journal_id', '=', journal.id),
+            ('state', '=', 'draft'),
+        ], limit=1)
+        if not move:
+            vals = {
+                'company_id': self.company_id.id,
+                'move_type': move_type,
+                'partner_id': partner_id,
+                'invoice_date': self.write_date,
+                'date': self.write_date,
+                'ref': 'Commission for SO %s' % self.order_id.name,
+            }
+            if not credit_note:
+                # if credit note, let journal be found
+                vals['journal_id'] = journal.id
+            move = Move.create(vals)
+        move_line = self.env['account.move.line'].with_context(skip_invoice_sync=False).create({
+            'move_id': move.id,
+            'product_id': self.company_id.bonus_product_id.id,
+            'name': 'Commission for SO %s (SOL: %s)' % (self.order_id.name, self.so_line.name),
+            # bonus amount is negative if bonus from credit note, but in
+            # credit note itself the line need to be positive
+            'price_unit': -self.amount if credit_note else self.amount,
+            'tax_ids': None,
+        })
+        self.vendor_bill_move_line_ids = [Command.link(move_line.id)]
