@@ -63,6 +63,7 @@ class TestBonus(common.TransactionCase):
         })
 
     def test_01_bonus(self):
+        AccountAnalyticLine = self.env['account.analytic.line']
         existing_bonuses = self.env['gse.bonus'].search([])
         # Create SO + SOL
         SaleOrder = self.env['sale.order'].with_context(tracking_disable=True)
@@ -77,7 +78,7 @@ class TestBonus(common.TransactionCase):
                 ('state', '=', 'draft'),
             ])
 
-        def simulate_full_flow():
+        def simulate_full_flow(add_timesheets=True):
             sale_order = SaleOrder.create({
                 'partner_id': self.partner.id,
                 'partner_invoice_id': self.partner.id,
@@ -98,27 +99,30 @@ class TestBonus(common.TransactionCase):
             # Generate some timesheet for the service task
             task_labor_generator = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_generator.id)])
             task_labor_installation = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_installation.id)])
-            timesheet1 = self.env['account.analytic.line'].create({
-                'name': 'Tech 1 = 10h on labor generator',
-                'project_id': task_labor_generator.project_id.id,
-                'task_id': task_labor_generator.id,
-                'unit_amount': 10,
-                'employee_id': self.employee1.id,
-            })
-            timesheet2 = self.env['account.analytic.line'].create({
-                'name': 'Tech 2 = 20h on labor Installation',
-                'project_id': task_labor_installation.project_id.id,
-                'task_id': task_labor_installation.id,
-                'unit_amount': 20,
-                'employee_id': self.employee2.id,
-            })
-            timesheet3 = self.env['account.analytic.line'].create({
-                'name': 'Tech 1 = 30h on labor Installation',
-                'project_id': task_labor_installation.project_id.id,
-                'task_id': task_labor_installation.id,
-                'unit_amount': 30,
-                'employee_id': self.employee1.id,
-            })
+
+            timesheet1 = timesheet2 = timesheet3 = AccountAnalyticLine
+            if add_timesheets:
+                timesheet1 = AccountAnalyticLine.create({
+                    'name': 'Tech 1 = 10h on labor generator',
+                    'project_id': task_labor_generator.project_id.id,
+                    'task_id': task_labor_generator.id,
+                    'unit_amount': 10,
+                    'employee_id': self.employee1.id,
+                })
+                timesheet2 = AccountAnalyticLine.create({
+                    'name': 'Tech 2 = 20h on labor Installation',
+                    'project_id': task_labor_installation.project_id.id,
+                    'task_id': task_labor_installation.id,
+                    'unit_amount': 20,
+                    'employee_id': self.employee2.id,
+                })
+                timesheet3 = AccountAnalyticLine.create({
+                    'name': 'Tech 1 = 30h on labor Installation',
+                    'project_id': task_labor_installation.project_id.id,
+                    'task_id': task_labor_installation.id,
+                    'unit_amount': 30,
+                    'employee_id': self.employee1.id,
+                })
 
             # Generate invoice
             invoice1 = sale_order._create_invoices()[0]
@@ -210,3 +214,7 @@ class TestBonus(common.TransactionCase):
         self.assertEqual(len(sale_order_bonus_not_paid.bonuses_ids), 3)
         sale_order_bonus_not_paid.action_cancel()
         self.assertEqual(len(sale_order_bonus_not_paid.bonuses_ids), 0)
+
+        # TEST 5: Generating the bonus when no timesheet is set should not fail
+        simulate_full_flow(add_timesheets=False)
+        self.env.cr.commit()

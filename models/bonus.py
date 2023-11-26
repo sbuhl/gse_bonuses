@@ -59,6 +59,12 @@ class Bonus(models.Model):
             task_total_hours = labor_task.total_hours_spent
             # eg 300$ / 10% = 30$
             reward_to_distribute = (labor_order_line.price_total * labor_order_line.product_id.get_bonus_rate()) / 100
+
+            if not task_total_hours or not reward_to_distribute:
+                # There might be no timesheet encoded, or 0% set on product AND
+                # company rate
+                continue
+
             # eg 30$ / 2.25 = 13,33$ for one hour
             one_hour_reward = reward_to_distribute / task_total_hours
 
