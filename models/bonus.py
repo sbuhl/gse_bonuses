@@ -179,3 +179,19 @@ class Bonus(models.Model):
             'tax_ids': None,
         })
         self.vendor_bill_move_line_ids = [Command.link(move_line.id)]
+
+    def revert(self):
+        """ Revert a bonus:
+        - If it's already paid, it should generate a vendor bill credit note
+          with the same amount
+        - If it's not yet paid, it should simply remove the bonus itself """
+        self.ensure_one()  # TODO: Make it multi
+
+        # TODO: Don't revert the bonus if the vendor bill is not
+        # paid yet, just remove the bonus from there.
+        # Once done, add a test for it in `test_02_bonus` too
+        bonus = self
+        revert_bonus = bonus.copy({'amount': -bonus.amount})
+        revert_bonus.add_bonus_on_vendor_bill(credit_note=True)
+        move_ids = (bonus + revert_bonus).vendor_bill_move_ids
+        (bonus + revert_bonus).write({'vendor_bill_move_ids': move_ids.ids})
