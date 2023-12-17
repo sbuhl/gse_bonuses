@@ -18,7 +18,6 @@
             <field name="bonus_rate">5.0</field>
             <field name="bonus_product_id" ref="gse_bonuses.bonus_product"/>
             <field name="bonus_journal_id" search="[
-                '|',
                 ('name', '=', 'Vendor Bills'),
                 ('type', '=', 'purchase'),
             ]"/>

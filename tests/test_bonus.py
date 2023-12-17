@@ -1,5 +1,8 @@
 # coding: utf-8
 
+from freezegun import freeze_time
+from unittest.mock import patch
+
 from odoo.exceptions import UserError
 from odoo.tests import common
 
@@ -62,68 +65,76 @@ class TestBonus(common.TransactionCase):
             'address_home_id': self.partner2.id,
         })
 
-    def test_01_bonus(self):
+    def get_vendor_bill(self, bonuses):
+        """ Given some bonuses, return the DRAFT vendor bill for the partner
+        of the first given bonuses.
+        """
+        return self.env['account.move'].search([
+            ('company_id', '=', bonuses[0].company_id.id),
+            ('move_type', '=', 'in_invoice'),
+            ('partner_id', '=', bonuses[0].employee_id.address_home_id.id),
+            ('journal_id', '=', bonuses[0].company_id.bonus_journal_id.id),
+            ('state', '=', 'draft'),
+        ])
+
+    def simulate_bonus_flow(self, add_timesheets=True, pay_invoice=True):
+        """ Simulate the full complete flow related to bonuses:
+        - Create a SO with 2 labor lines
+        - Validate the SO, which generates 2 tasks
+        - Add some timesheet on each task
+        - Generate and pay the invoice
+        - Mark task as done and delivered
+        """
         AccountAnalyticLine = self.env['account.analytic.line']
-        existing_bonuses = self.env['gse.bonus'].search([])
-        # Create SO + SOL
         SaleOrder = self.env['sale.order'].with_context(tracking_disable=True)
         SaleOrderLine = self.env['sale.order.line'].with_context(tracking_disable=True)
 
-        def get_vendor_bill(bonuses):
-            return self.env['account.move'].search([
-                ('company_id', '=', bonuses[0].company_id.id),
-                ('move_type', '=', 'in_invoice'),
-                ('partner_id', '=', bonuses[0].employee_id.address_home_id.id),
-                ('journal_id', '=', bonuses[0].company_id.bonus_journal_id.id),
-                ('state', '=', 'draft'),
-            ])
+        sale_order = SaleOrder.create({
+            'partner_id': self.partner.id,
+            'partner_invoice_id': self.partner.id,
+            'partner_shipping_id': self.partner.id,
+        })
+        so_line_order_task_labor_generator = SaleOrderLine.create({
+            'product_id': self.product_order_task_labor_generator.id,
+            'product_uom_qty': 1,
+            'order_id': sale_order.id,
+        })
+        so_line_order_task_labor_installation = SaleOrderLine.create({
+            'product_id': self.product_order_task_labor_installation.id,
+            'product_uom_qty': 1,
+            'order_id': sale_order.id,
+        })
+        sale_order.action_confirm()
 
-        def simulate_full_flow(add_timesheets=True):
-            sale_order = SaleOrder.create({
-                'partner_id': self.partner.id,
-                'partner_invoice_id': self.partner.id,
-                'partner_shipping_id': self.partner.id,
+        # Generate some timesheet for the service task
+        task_labor_generator = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_generator.id)])
+        task_labor_installation = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_installation.id)])
+
+        timesheet1 = timesheet2 = timesheet3 = AccountAnalyticLine
+        if add_timesheets:
+            timesheet1 = AccountAnalyticLine.create({
+                'name': 'Tech 1 = 10h on labor generator',
+                'project_id': task_labor_generator.project_id.id,
+                'task_id': task_labor_generator.id,
+                'unit_amount': 10,
+                'employee_id': self.employee1.id,
             })
-            so_line_order_task_labor_generator = SaleOrderLine.create({
-                'product_id': self.product_order_task_labor_generator.id,
-                'product_uom_qty': 1,
-                'order_id': sale_order.id,
+            timesheet2 = AccountAnalyticLine.create({
+                'name': 'Tech 2 = 20h on labor Installation',
+                'project_id': task_labor_installation.project_id.id,
+                'task_id': task_labor_installation.id,
+                'unit_amount': 20,
+                'employee_id': self.employee2.id,
             })
-            so_line_order_task_labor_installation = SaleOrderLine.create({
-                'product_id': self.product_order_task_labor_installation.id,
-                'product_uom_qty': 1,
-                'order_id': sale_order.id,
+            timesheet3 = AccountAnalyticLine.create({
+                'name': 'Tech 1 = 30h on labor Installation',
+                'project_id': task_labor_installation.project_id.id,
+                'task_id': task_labor_installation.id,
+                'unit_amount': 30,
+                'employee_id': self.employee1.id,
             })
-            sale_order.action_confirm()
 
-            # Generate some timesheet for the service task
-            task_labor_generator = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_generator.id)])
-            task_labor_installation = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_installation.id)])
-
-            timesheet1 = timesheet2 = timesheet3 = AccountAnalyticLine
-            if add_timesheets:
-                timesheet1 = AccountAnalyticLine.create({
-                    'name': 'Tech 1 = 10h on labor generator',
-                    'project_id': task_labor_generator.project_id.id,
-                    'task_id': task_labor_generator.id,
-                    'unit_amount': 10,
-                    'employee_id': self.employee1.id,
-                })
-                timesheet2 = AccountAnalyticLine.create({
-                    'name': 'Tech 2 = 20h on labor Installation',
-                    'project_id': task_labor_installation.project_id.id,
-                    'task_id': task_labor_installation.id,
-                    'unit_amount': 20,
-                    'employee_id': self.employee2.id,
-                })
-                timesheet3 = AccountAnalyticLine.create({
-                    'name': 'Tech 1 = 30h on labor Installation',
-                    'project_id': task_labor_installation.project_id.id,
-                    'task_id': task_labor_installation.id,
-                    'unit_amount': 30,
-                    'employee_id': self.employee1.id,
-                })
-
+        if pay_invoice:
             # Generate invoice
             invoice1 = sale_order._create_invoices()[0]
             invoice1.action_post()
@@ -135,15 +146,19 @@ class TestBonus(common.TransactionCase):
             })
             register_payments._create_payments()
 
-            # Mark task as done and delivered
-            task_labor_generator.stage_id = 3  # Done
-            task_labor_installation.stage_id = 3  # Done
-            so_line_order_task_labor_generator.qty_delivered = so_line_order_task_labor_generator.product_uom_qty
-            so_line_order_task_labor_installation.qty_delivered = so_line_order_task_labor_installation.product_uom_qty
+        # Mark task as done and delivered
+        task_labor_generator.stage_id = 3  # Done
+        task_labor_installation.stage_id = 3  # Done
+        so_line_order_task_labor_generator.qty_delivered = so_line_order_task_labor_generator.product_uom_qty
+        so_line_order_task_labor_installation.qty_delivered = so_line_order_task_labor_installation.product_uom_qty
 
-            return sale_order, timesheet1, timesheet2, timesheet3
+        return sale_order, timesheet1, timesheet2, timesheet3
 
-        sale_order, timesheet1, timesheet2, timesheet3 = simulate_full_flow()
+    def test_01_bonus(self):
+        existing_bonuses = self.env['gse.bonus'].search([])
+        # Create SO + SOL
+
+        sale_order, timesheet1, timesheet2, timesheet3 = self.simulate_bonus_flow()
 
         # Ensure bonuses are created as expected, replicating the example in
         # `__manifest__.py`
@@ -163,15 +178,15 @@ class TestBonus(common.TransactionCase):
         self.assertEqual(bonuses_flow1[2].employee_id, self.employee1)
         self.assertEqual(bonuses_flow1[2].timesheet_id, timesheet1)
 
-        vendor_bill_employee1 = get_vendor_bill(bonuses_flow1[0])
-        vendor_bill_employee2 = get_vendor_bill(bonuses_flow1[1])
+        vendor_bill_employee1 = self.get_vendor_bill(bonuses_flow1[0])
+        vendor_bill_employee2 = self.get_vendor_bill(bonuses_flow1[1])
         self.assertEqual(len(vendor_bill_employee1.invoice_line_ids), 2)
         self.assertEqual(len(vendor_bill_employee2.invoice_line_ids), 1)
         self.assertTrue(vendor_bill_employee1.amount_total == vendor_bill_employee1.amount_untaxed == 60)
         self.assertTrue(vendor_bill_employee2.amount_total == vendor_bill_employee2.amount_untaxed == 20)
 
         # Run a second time the flow to ensure it's using the same vendor bill
-        simulate_full_flow()
+        self.simulate_bonus_flow()
         self.assertEqual(len(vendor_bill_employee1.invoice_line_ids), 4)
         self.assertEqual(len(vendor_bill_employee2.invoice_line_ids), 2)
         self.assertTrue(vendor_bill_employee1.amount_total == vendor_bill_employee1.amount_untaxed == 120)
@@ -187,7 +202,7 @@ class TestBonus(common.TransactionCase):
 
         # Now check that running the flow again will create a new vendor bill
         # for employee 1 (as the existing one got paid) but not for employee 2
-        sale_order_bonus_not_paid, _, _, _ = simulate_full_flow()
+        sale_order_bonus_not_paid, _, _, _ = self.simulate_bonus_flow()
         self.assertEqual(len(vendor_bill_employee1.invoice_line_ids), 4)
         self.assertEqual(len(vendor_bill_employee2.invoice_line_ids), 3)
         self.assertTrue(vendor_bill_employee1.amount_total == vendor_bill_employee1.amount_untaxed == 120)
@@ -216,4 +231,22 @@ class TestBonus(common.TransactionCase):
         self.assertEqual(len(sale_order_bonus_not_paid.bonuses_ids), 0)
 
         # TEST 5: Generating the bonus when no timesheet is set should not fail
-        simulate_full_flow(add_timesheets=False)
+        self.simulate_bonus_flow(add_timesheets=False)
+
+    def test_02_bonus(self):
+        """ TODO: Create a test for the client invoice which receive a credit
+        note and which then generate a negative bonus to "cancel" a previously
+        paid bonus genrated from the client invoice that got "note credited".
+        See `out_refund` in `_invoice_paid_hook`.
+        """
+        self.simulate_bonus_flow()
+        self.env.cr.commit()
+
+    def test_03_bonus(self):
+        # Orders from before June 2023 should not grant any bonuses
+        existing_bonuses = self.env['gse.bonus'].search([])
+        datetime = '2023-05-31 12:00:00'
+        with freeze_time(datetime), patch.object(self.env.cr, 'now', lambda: datetime):
+            self.simulate_bonus_flow()
+        bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
+        self.assertFalse(bonuses_flow1, "no bonuses should have been created because SO from before June 2023")

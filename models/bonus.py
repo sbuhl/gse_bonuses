@@ -3,6 +3,7 @@ import logging
 
 from odoo import api, fields, models, Command
 from odoo.exceptions import UserError
+from odoo.tools.float_utils import float_compare
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,9 @@ class Bonus(models.Model):
         if not order:
             return
 
-        if not (order.date_order > fields.Datetime.from_string('2023-05-31')):
+        if not (order.date_order > fields.Datetime.from_string('2023-05-31 23:59:59')):
+            # This should not but a `raise UserError()` because you still want
+            # to validate SO after that date but just not generating bonuses.
             logger.info("Impossible de générer un bonus pour une SO validée avant le 1er juin 2023 (SO %s %s).", order.id, order.date_order)
             return
 
@@ -69,8 +72,14 @@ class Bonus(models.Model):
         if any(line for line in order.order_line if line.product_uom_qty != line.qty_invoiced):
             # Not all products have been invoiced
             return
-        if any(line for line in order.order_line if line.product_uom_qty != line.qty_delivered):
-            # Not all products have been delivered
+
+        precision = self.env['decimal.precision'].precision_get('Product Unit of Measure')
+        if not order.order_line.filtered(
+            lambda line:
+            not (line.is_downpayment or line.display_type or (line.product_id.type == 'service' and line.product_id.service_tracking == 'no'))
+            and float_compare(line.qty_delivered, line.product_uom_qty, precision_digits=precision) >= 0
+        ):
+            # Not all deliverable products have been delivered
             return
 
         # 1. Get every SOL related to a labor task
@@ -129,8 +138,10 @@ class Bonus(models.Model):
         self.ensure_one()
 
         journal = self.order_id.company_id.bonus_journal_id
-        if not journal or not journal.default_account_id:
-            raise UserError("Le journal pour les bonus n'est pas configuré")
+        if not journal:
+            raise UserError("Aucun journal pour les bonus n'est sélectionné")
+        if not journal.default_account_id:
+            raise UserError("Le journal sélectionné %r pour les bonus n'a pas de `default_account_id`" % journal.name)
 
         partner_id = self.employee_id.address_home_id.id
         if not partner_id:

@@ -16,6 +16,7 @@ class AccountMove(models.Model):
                     for bonus in order.bonuses_ids:
                         # TODO: Don't revert the bonus if the vendor bill is not
                         # paid yet, just remove the bonus from there.
+                        # Once done, add a test for it in `test_02_bonus` too
                         revert_bonus = bonus.copy({'amount': -bonus.amount})
                         revert_bonus.add_bonus_on_vendor_bill(credit_note=True)
                         move_ids = (bonus + revert_bonus).vendor_bill_move_ids
