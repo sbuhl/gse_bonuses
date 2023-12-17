@@ -23,7 +23,6 @@
                             <field name="currency_id" readonly="1"/>
                             <field name="amount" readonly="1"/>
                             <field name="order_id" readonly="1"/>
-                            <!-- <field name="vendor_bill_move_ids" readonly="1"/> -->
                         </group>
                     </group>
                 </sheet>
@@ -35,9 +34,6 @@
         <field name="name">gse.bonus.tree</field>
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
-            <!-- TODO: Maybe add back a "is paid" field which is a related to the vendor bill state if
-                       really needed to see the info in the bonus list view
-                <tree decoration-info="state == 'draft'" decoration-muted="state == 'cancel'"> -->
             <tree>
                 <field name="create_date"/>
                 <field name="timesheet_id"/>
@@ -81,11 +77,7 @@
                 <field name="order_id"/>
                 <field name="employee_id"/>
                 <separator/>
-                <!-- TODO: Same here, if really needed to filter on this info, see other comment in this file
-                <filter string="Confirmed" name="confirmed" domain="[('state', '=', 'done')]"/>
-                <filter string="Paid" name="paid" domain="[('state', '=', 'paid')]"/> -->
                 <group expand="0" name="group_by" string="Group By">
-                    <!-- <filter name="group_state" string="Status" domain="[]" context="{'group_by': 'state'}"/> -->
                     <filter name="group_user" string="User" domain="[]" context="{'group_by': 'employee_id'}"/>
                     <filter name="group_order" string="Order" domain="[]" context="{'group_by': 'order_id'}"/>
                 </group>

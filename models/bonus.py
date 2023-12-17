@@ -18,11 +18,7 @@ class Bonus(models.Model):
     employee_id = fields.Many2one(related='timesheet_id.employee_id', store=True, required=1, copy=True)
     order_id = fields.Many2one(related='so_line.order_id', store=True, required=1, copy=True)
     company_id = fields.Many2one(related='order_id.company_id')
-    currency_id = fields.Many2one(related='order_id.currency_id')
-
-    # move_bonus_from = fields.Many2one('account.move')  # source_move_id
-    # currency_id = fields.Many2one(related='move_bonus_from.currency_id')
-    # TODO: Maybe need to convert amount into company amount, see `_compute_amount_company`
+    currency_id = fields.Many2one(related='company_id.currency_id')
     amount = fields.Monetary(string='Amount', required=1)
 
     vendor_bill_move_ids = fields.Many2many(
@@ -102,8 +98,15 @@ class Bonus(models.Model):
 
             # eg 2.25 for 2h15min
             task_total_hours = labor_task.total_hours_spent
+            # convert in company currency
+            labor_price_total = labor_order_line.currency_id._convert(
+                labor_order_line.price_total,
+                order.company_id.currency_id,
+                order.company_id,
+                fields.Date.today()
+            )
             # eg 300$ / 10% = 30$
-            reward_to_distribute = (labor_order_line.price_total * labor_order_line.product_id.get_bonus_rate()) / 100
+            reward_to_distribute = (labor_price_total * labor_order_line.product_id.get_bonus_rate()) / 100
 
             if not task_total_hours or not reward_to_distribute:
                 # There might be no timesheet encoded, or 0% set on product AND
@@ -132,7 +135,7 @@ class Bonus(models.Model):
 
                 # Create bonus
                 bonus_amount = timesheet.unit_amount * one_hour_reward  # TODO: check if `unit_amount` in minutes?
-                bonus = self.create({  # TODO: create multi for perfs
+                bonus = self.create({
                     'timesheet_id': timesheet.id,
                     'amount': bonus_amount,
                     'order_id': timesheet.order_id.id,

@@ -77,7 +77,7 @@ class TestBonus(common.TransactionCase):
             ('state', '=', 'draft'),
         ])
 
-    def simulate_bonus_flow(self, add_timesheets=True, pay_invoice=True):
+    def simulate_bonus_flow(self, add_timesheets=True, pay_invoice=True, so_partner=None):
         """ Simulate the full complete flow related to bonuses:
         - Create a SO with 2 labor lines
         - Validate the SO, which generates 2 tasks
@@ -89,10 +89,13 @@ class TestBonus(common.TransactionCase):
         SaleOrder = self.env['sale.order'].with_context(tracking_disable=True)
         SaleOrderLine = self.env['sale.order.line'].with_context(tracking_disable=True)
 
+        if not so_partner:
+            so_partner = self.partner
+
         sale_order = SaleOrder.create({
-            'partner_id': self.partner.id,
-            'partner_invoice_id': self.partner.id,
-            'partner_shipping_id': self.partner.id,
+            'partner_id': so_partner.id,
+            'partner_invoice_id': so_partner.id,
+            'partner_shipping_id': so_partner.id,
         })
         so_line_order_task_labor_generator = SaleOrderLine.create({
             'product_id': self.product_order_task_labor_generator.id,
@@ -289,3 +292,36 @@ class TestBonus(common.TransactionCase):
             self.simulate_bonus_flow()
         bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
         self.assertFalse(bonuses_flow1, "no bonuses should have been created because SO from before June 2023")
+
+    def test_04_bonus(self):
+        """ If SO / Invoice are generated in other currency like RWF, bonuses
+        should still be created in company currency like $
+        """
+        existing_bonuses = self.env['gse.bonus'].search([])
+
+        # Setup RWF currency on partner
+        currency_RWF = self.env['res.currency'].with_context(active_test=False).search(
+            [('name', '=', 'RWF')]
+        )
+        currency_RWF.action_unarchive()
+        pricelist_RWF = self.env['product.pricelist'].create({
+            'name': 'RWF',
+            'currency_id': currency_RWF.id,
+        })
+        partner = self.env['res.partner'].create({
+            'name': "RWF Currency Partner",
+            'property_product_pricelist': pricelist_RWF.id,
+        })
+
+        # Simulate flow
+        sale_order, _, _, _, _ = self.simulate_bonus_flow(so_partner=partner)
+        bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
+        self.assertEqual(sale_order.amount_total, 196892.0)
+        self.assertEqual(sale_order.currency_id, currency_RWF)
+        self.assertNotEqual(sale_order.currency_id, sale_order.company_id.currency_id)
+        self.assertEqual(bonuses_flow1[0].currency_id, sale_order.company_id.currency_id)
+        self.assertEqual(bonuses_flow1.mapped('amount'), [30.0, 20.0, 30.0])
+
+    def test_shortcut_commit(self):
+        self.simulate_bonus_flow()
+        self.env.cr.commit()

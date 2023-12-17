@@ -2,7 +2,7 @@
 
 import ast
 
-from odoo import api, fields, models, Command
+from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -20,7 +20,7 @@ class SaleOrder(models.Model):
     def action_view_bonuses(self):
         action = self.env['ir.actions.act_window']._for_xml_id('gse_bonuses.action_gse_bonus')
         action['display_name'] = self.name
-        action['domain'] = [('order_id', '=', self.id)]
+        action['domain'] = [('id', 'in', self.bonuses_ids.ids)]
         context = action['context'].replace('active_id', str(self.id))
         action['context'] = ast.literal_eval(context)
         return action

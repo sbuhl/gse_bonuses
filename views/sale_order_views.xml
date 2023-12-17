@@ -8,7 +8,8 @@
         <field name="priority">10</field>
         <field name="arch" type="xml">
             <xpath expr="//button[@name='action_view_invoice']" position="before">
-                <button type="object" name="action_view_bonuses" class="oe_stat_button" icon="fa-gift" attrs="{'invisible': [('bonuses_count', '=', 0)]}" groups="account.group_account_manager">
+                <button type="object" name="action_view_bonuses" class="oe_stat_button" icon="fa-gift"
+                        attrs="{'invisible': [('bonuses_count', '=', 0)]}" groups="account.group_account_manager">
                     <field name="bonuses_count" widget="statinfo" string="Bonuses"/>
                 </button>
             </xpath>
