@@ -32,3 +32,8 @@ class SaleOrder(models.Model):
         self.bonuses_ids.unlink()
 
         return super().action_cancel()
+
+    def regenerate_bonuses(self):
+        # Called through the action on form view
+        for order in self:
+            self.env['gse.bonus'].generate_bonuses(order)
