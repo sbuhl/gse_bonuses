@@ -26,20 +26,9 @@ class SaleOrder(models.Model):
         return action
 
     def action_cancel(self):
-        for order in self:
-            for bonus in order.bonuses_ids:
-                # Don't let bonus be deleted if already paid
-                for vendor_bill in bonus.vendor_bill_move_ids:
-                    if vendor_bill.state == 'posted':
-                        raise UserError('Cette vente est liée à une commission qui a déjà été payée.')
+        if any(m.payment_state == 'posted' for m in self.bonuses_ids.vendor_bill_move_ids):
+            raise UserError('Cette vente est liée à une commission qui a déjà été payée.')
 
-                    # Remove move line and bonus
-                    for vendor_bill_line in bonus.vendor_bill_move_line_ids:
-                        bonus.unlink()
-                        vendor_bill.invoice_line_ids = [Command.unlink(vendor_bill_line.id)]
-                        # Unlink the vendor bill if nothing in it anymore
-                        if not vendor_bill.invoice_line_ids:
-                            vendor_bill.write({'state': 'draft'})
-                            vendor_bill.unlink()
+        self.bonuses_ids.unlink()
 
         return super().action_cancel()

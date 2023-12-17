@@ -41,6 +41,18 @@ class Bonus(models.Model):
         for bonus in self:
             bonus.vendor_bill_move_ids = bonus.vendor_bill_move_line_ids.move_id
 
+    def unlink(self):
+        move_lines = self.vendor_bill_move_line_ids
+        res = super().unlink()
+        for line in move_lines:
+            vendor_bill = line.move_id
+            line.unlink()
+            # Unlink the vendor bill if nothing in it anymore
+            if not vendor_bill.invoice_line_ids:
+                vendor_bill.write({'state': 'draft'})
+                vendor_bill.unlink()
+        return res
+
     def action_view_invoices(self):
         action = self.env['ir.actions.act_window']._for_xml_id('gse_bonuses.action_view_invoices')
         # action['display_name'] = self.name
@@ -185,13 +197,13 @@ class Bonus(models.Model):
         - If it's already paid, it should generate a vendor bill credit note
           with the same amount
         - If it's not yet paid, it should simply remove the bonus itself """
-        self.ensure_one()  # TODO: Make it multi
-
-        # TODO: Don't revert the bonus if the vendor bill is not
-        # paid yet, just remove the bonus from there.
-        # Once done, add a test for it in `test_02_bonus` too
-        bonus = self
-        revert_bonus = bonus.copy({'amount': -bonus.amount})
-        revert_bonus.add_bonus_on_vendor_bill(credit_note=True)
-        move_ids = (bonus + revert_bonus).vendor_bill_move_ids
-        (bonus + revert_bonus).write({'vendor_bill_move_ids': move_ids.ids})
+        for bonus in self:
+            bonus_vendor_bill_excluded_credit_node = bonus.vendor_bill_move_line_ids.move_id.filtered(lambda m: m.move_type == 'in_invoice')
+            vendor_bill_paid = bonus_vendor_bill_excluded_credit_node.payment_state == 'paid'
+            if vendor_bill_paid:
+                # Generate vendor bill credit note to revert bonus
+                revert_bonus = bonus.copy({'amount': -bonus.amount})
+                revert_bonus.add_bonus_on_vendor_bill(credit_note=True)
+            else:
+                # Delete bonus
+                bonus.unlink()

@@ -1,27 +1,27 @@
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
-    bonuses_ids = fields.Many2many('gse.bonus', compute='_compute_bonuses_ids')
+    related_orders = fields.Many2many('sale.order', compute='_compute_related_orders')
+    bonuses_ids = fields.Many2many('gse.bonus', compute='_compute_related_orders')
 
-    def _compute_bonuses_ids(self):
+    @api.depends('line_ids.sale_line_ids.order_id')
+    def _compute_related_orders(self):
         for move in self:
-            move.bonuses_ids = move.line_ids.sale_line_ids.order_id.bonuses_ids
+            related_orders = move.line_ids.sale_line_ids.order_id
+            move.related_orders = related_orders
+            move.bonuses_ids = related_orders.bonuses_ids
 
     def _invoice_paid_hook(self):
         res = super()._invoice_paid_hook()
-        # TODO: Maybe could use `get_recursively_not_directly_related` from
-        #       https://github.com/sbuhl/gse_custo/pull/17
         for move in self:
-            sale_orders = move.line_ids.sale_line_ids.order_id
-            for order in sale_orders:
-                if move.move_type == 'out_refund':
-                    # Special case for paid credit note: generate a negative bonus
-                    for bonus in order.bonuses_ids:
-                        bonus.revert()
-                else:
+            if move.move_type == 'out_refund':
+                # Special case for paid credit note: generate a negative bonus
+                move.bonuses_ids.revert()
+            else:
+                for order in move.related_orders:
                     self.env['gse.bonus'].generate_bonuses(order)
         return res
 
@@ -30,7 +30,6 @@ class AccountMove(models.Model):
         # "posted" state -> "Cancel" the bonuses
         if 'state' in vals and vals['state'] != 'posted':
             for move in self.filtered(lambda m: m.state == 'posted'):
-                for bonus in move.bonuses_ids:
-                    bonus.revert()
-        res = super().write(vals)
-        return res
+                move.bonuses_ids.revert()
+
+        return super().write(vals)

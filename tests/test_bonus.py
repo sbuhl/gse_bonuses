@@ -134,6 +134,7 @@ class TestBonus(common.TransactionCase):
                 'employee_id': self.employee1.id,
             })
 
+        invoice1 = self.env['account.move']
         if pay_invoice:
             # Generate invoice
             invoice1 = sale_order._create_invoices()[0]
@@ -152,13 +153,13 @@ class TestBonus(common.TransactionCase):
         so_line_order_task_labor_generator.qty_delivered = so_line_order_task_labor_generator.product_uom_qty
         so_line_order_task_labor_installation.qty_delivered = so_line_order_task_labor_installation.product_uom_qty
 
-        return sale_order, timesheet1, timesheet2, timesheet3
+        return sale_order, timesheet1, timesheet2, timesheet3, invoice1
 
     def test_01_bonus(self):
         existing_bonuses = self.env['gse.bonus'].search([])
         # Create SO + SOL
 
-        sale_order, timesheet1, timesheet2, timesheet3 = self.simulate_bonus_flow()
+        sale_order, timesheet1, timesheet2, timesheet3, _ = self.simulate_bonus_flow()
 
         # Ensure bonuses are created as expected, replicating the example in
         # `__manifest__.py`
@@ -202,7 +203,7 @@ class TestBonus(common.TransactionCase):
 
         # Now check that running the flow again will create a new vendor bill
         # for employee 1 (as the existing one got paid) but not for employee 2
-        sale_order_bonus_not_paid, _, _, _ = self.simulate_bonus_flow()
+        sale_order_bonus_not_paid, _, _, _, _ = self.simulate_bonus_flow()
         self.assertEqual(len(vendor_bill_employee1.invoice_line_ids), 4)
         self.assertEqual(len(vendor_bill_employee2.invoice_line_ids), 3)
         self.assertTrue(vendor_bill_employee1.amount_total == vendor_bill_employee1.amount_untaxed == 120)
@@ -234,13 +235,51 @@ class TestBonus(common.TransactionCase):
         self.simulate_bonus_flow(add_timesheets=False)
 
     def test_02_bonus(self):
-        """ TODO: Create a test for the client invoice which receive a credit
+        """ Test that "canceling" a paid invoice is reverting the bonuses.
+        It also test both possibilities:
+        - If it's already paid, it should generate a vendor bill credit note
+          with the same amount
+        - If it's not yet paid, it should simply remove the bonus itself
+
+        TODO Create a similar test for the client invoice which receive a credit
         note and which then generate a negative bonus to "cancel" a previously
-        paid bonus genrated from the client invoice that got "note credited".
+        paid bonus generated from the client invoice that got "note credited".
         See `out_refund` in `_invoice_paid_hook`.
+        note.
         """
-        self.simulate_bonus_flow()
-        self.env.cr.commit()
+        existing_bonuses = self.env['gse.bonus'].search([])
+        sale_order, _, _, _, invoice1 = self.simulate_bonus_flow()
+        bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
+
+        # Pay vendor bill of employee 1
+        vendor_bill_employee1 = self.get_vendor_bill(bonuses_flow1[0])
+        vendor_bill_employee2 = self.get_vendor_bill(bonuses_flow1[1])
+        vendor_bill_employee1.action_post()
+        journal = self.env['account.journal'].search([('type', '=', 'cash'), ('company_id', '=', sale_order.company_id.id)], limit=1)
+        register_payments = self.env['account.payment.register'].with_context(active_model='account.move', active_ids=vendor_bill_employee1.id).create({
+            'journal_id': journal.id,
+        })
+        register_payments._create_payments()
+
+        # Safety checks
+        self.assertTrue(vendor_bill_employee1.exists())
+        self.assertTrue(vendor_bill_employee2.exists())
+        self.assertEqual(len(bonuses_flow1), 3)
+        so_bonuses = sale_order.bonuses_ids
+        self.assertEqual(len(so_bonuses.filtered(lambda b: b.employee_id == self.employee1)), 2)
+        self.assertEqual(len(so_bonuses.filtered(lambda b: b.employee_id == self.employee2)), 1)
+
+        # "Cancel" the invoice which generated the bonuses
+        invoice1.button_draft()
+        self.assertTrue(vendor_bill_employee1.exists())
+        self.assertFalse(vendor_bill_employee2.exists())
+        self.assertEqual(len(self.env['gse.bonus'].search([]) - existing_bonuses), 4)
+        so_bonuses = sale_order.bonuses_ids
+        employee1_bonuses = so_bonuses.filtered(lambda b: b.employee_id == self.employee1)
+        self.assertEqual(len(employee1_bonuses), 4)
+        self.assertEqual(len(so_bonuses.filtered(lambda b: b.employee_id == self.employee2)), 0)
+        self.assertEqual(employee1_bonuses.mapped('amount'), [-30, -30, 30, 30])
+        self.assertEqual(len(employee1_bonuses.vendor_bill_move_ids), 2)
 
     def test_03_bonus(self):
         # Orders from before June 2023 should not grant any bonuses
