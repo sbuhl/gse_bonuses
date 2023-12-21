@@ -322,6 +322,11 @@ class TestBonus(common.TransactionCase):
         self.assertEqual(bonuses_flow1[0].currency_id, sale_order.company_id.currency_id)
         self.assertEqual(bonuses_flow1.mapped('amount'), [30.0, 20.0, 30.0])
 
+    def test_05_bonus_no_labor_no_timesheet(self):
+        # TODO: Write test for "truc chiant sbu" implémenté: no labor product
+        # can also generate bonuses
+        pass
+
     def test_shortcut_commit(self):
         self.simulate_bonus_flow()
         self.env.cr.commit()

@@ -13,9 +13,9 @@ class Bonus(models.Model):
     _description = 'Bonus'
     _order = 'id desc'
 
-    timesheet_id = fields.Many2one('account.analytic.line', required=1, copy=True)
-    so_line = fields.Many2one(related='timesheet_id.so_line')
-    employee_id = fields.Many2one(related='timesheet_id.employee_id', store=True, required=1, copy=True)
+    timesheet_id = fields.Many2one('account.analytic.line', copy=True)
+    so_line = fields.Many2one('sale.order.line', require=1, copy=True)
+    employee_id = fields.Many2one('hr.employee', required=1, copy=True)
     order_id = fields.Many2one(related='so_line.order_id', store=True, required=1, copy=True)
     company_id = fields.Many2one(related='order_id.company_id')
     currency_id = fields.Many2one(related='company_id.currency_id')
@@ -36,6 +36,22 @@ class Bonus(models.Model):
     def _compute_vendor_bill_move_ids(self):
         for bonus in self:
             bonus.vendor_bill_move_ids = bonus.vendor_bill_move_line_ids.move_id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('timesheet_id'):
+                # Bonus from labor
+                so_line = self.env['account.analytic.line'].browse(vals['timesheet_id']).so_line.id
+                if so_line != vals.get('so_line'):
+                    raise UserError('This should never happen. timesheet != SO')
+                vals['so_line'] = so_line
+            else:
+                # Bonus from transport
+                if not vals.get('so_line'):
+                    raise UserError('This should never happen. no SOL on bonus')
+
+        return super().create(vals_list)
 
     def unlink(self):
         move_lines = self.vendor_bill_move_line_ids
@@ -90,7 +106,9 @@ class Bonus(models.Model):
             # Not all deliverable products have been delivered
             return
 
-        # 1. Get every SOL related to a labor task
+        involved_employees = self.env['hr.employee']
+
+        # Generate bonus for every SOL related to a labor task
         for labor_order_line in order.order_line.filtered(
             lambda line: line.product_id.service_tracking != 'no' and line.task_id and line.product_id.get_bonus_rate()
         ):
@@ -137,14 +155,44 @@ class Bonus(models.Model):
                 bonus_amount = timesheet.unit_amount * one_hour_reward  # TODO: check if `unit_amount` in minutes?
                 bonus = self.create({
                     'timesheet_id': timesheet.id,
+                    'so_line': timesheet.so_line.id,
+                    'employee_id': timesheet.employee_id.id,
                     'amount': bonus_amount,
                     'order_id': timesheet.order_id.id,
-                    'employee_id': timesheet.employee_id.id,
                 })
                 bonus.add_bonus_on_vendor_bill()
+                involved_employees |= timesheet.employee_id
 
             # Safety check
             assert task_total_hours == total_timesheet_unit_amount, "Total hours spent on task does not match timesheet sum."
+
+        # Generate bonus for every transport products
+        for transport_order_line in order.order_line.filtered(
+            # TODO: Something better that "no task"?
+            lambda line: not line.task_id and line.product_id.get_bonus_rate()
+        ):
+            # convert in company currency
+            transport_total = transport_order_line.currency_id._convert(
+                transport_order_line.price_total,
+                order.company_id.currency_id,
+                order.company_id,
+                fields.Date.today()
+            )
+            reward_per_employee = (transport_total * transport_order_line.product_id.get_bonus_rate()) / 100 / len(involved_employees)
+
+            if not reward_per_employee:
+                # There might be no timesheet encoded, or 0% set on product AND
+                # company rate
+                continue
+
+            for employee in involved_employees:
+                bonus = self.create({
+                    'so_line': transport_order_line.id,
+                    'amount': reward_per_employee,
+                    'order_id': order.id,
+                    'employee_id': employee.id,
+                })
+                bonus.add_bonus_on_vendor_bill()
 
     def add_bonus_on_vendor_bill(self, credit_note=False):
         """ Create or update vendor bill with new bonus. """
