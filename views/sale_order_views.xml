@@ -10,19 +10,19 @@
             <xpath expr="//button[@name='action_view_invoice']" position="before">
                 <button type="object" name="action_view_bonuses" class="oe_stat_button" icon="fa-gift"
                         attrs="{'invisible': [('bonuses_count', '=', 0)]}" groups="account.group_account_manager">
-                    <field name="bonuses_count" widget="statinfo" string="Bonuses"/>
+                    <field name="bonuses_count" widget="statinfo" string="Transport Expenses"/>
                 </button>
             </xpath>
         </field>
     </record>
 
     <record id="action_invoice_order_regenerate_gse_bonuses" model="ir.actions.server">
-        <field name="name">Regenerate labor bonuses</field>
+        <field name="name">Regenerate Transport Expenses</field>
         <field name="model_id" ref="model_sale_order"/>
         <field name="groups_id" eval="[(4, ref('account.group_account_manager'))]"/>
         <field name="binding_model_id" ref="model_sale_order" />
         <field name="state">code</field>
-        <field name="binding_view_types">form</field>
+        <field name="binding_view_types">form,list</field>
         <field name="code">records.regenerate_bonuses()
         </field>
     </record>

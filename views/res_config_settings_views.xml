@@ -8,12 +8,12 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <div name="performance" position="after">
-                <h2>Bonuses</h2>
+                <h2>Expenditures</h2>
                 <div class="row mt16 o_settings_container" groups="account.group_account_manager">
                     <div class="col-xs-12 col-md-6 o_setting_box">
                         <div class="o_setting_left_pane"/>
                         <div class="o_setting_right_pane">
-                            <span class ="o_form_label">Technician Bonuses</span>
+                            <span class ="o_form_label">Technician Transport Expenses</span>
                             <span class="fa fa-lg fa-building-o" title="Values set here are company-specific." groups="base.group_multi_company"/>
                             <div class="content-group">
                                 <div class="row mt16">
@@ -21,11 +21,11 @@
                                     <field name="bonus_journal_id" domain="[('company_id', '=', company_id)]"/>
                                 </div>
                                 <div class="row">
-                                    <label string="Bonus Product" for="bonus_product_id" class="col-md-3 o_light_label"/>
+                                    <label string="Expense Product" for="bonus_product_id" class="col-md-3 o_light_label"/>
                                     <field name="bonus_product_id"/>
                                 </div>
                                 <div class="row">
-                                    <label string="Product Default Bonus Rate" for="bonus_rate" class="col-md-3 o_light_label"/>
+                                    <label string="Default Technician Expense Rate" for="bonus_rate" class="col-md-3 o_light_label"/>
                                     <field name="bonus_rate"/>
                                 </div>
                             </div>

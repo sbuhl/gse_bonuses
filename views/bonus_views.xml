@@ -105,13 +105,13 @@
 
     <!-- Menu Items in Sales (sale_management) and Field Services (industry_fsm) -->
     <menuitem id="menu_bonus_sale"
-        name="Bonuses"
+        name="Technicians"
         parent="sale.sale_menu_root"
         sequence="45"
         action="gse_bonuses.action_gse_bonus"
         />
     <menuitem id="menu_bonus_fsm"
-        name="Bonuses"
+        name="Technicians"
         parent="industry_fsm.fsm_menu_root"
         sequence="45"
         action="gse_bonuses.action_gse_bonus"
