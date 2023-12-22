@@ -1,6 +1,7 @@
 from . import account_move
 from . import analytic_line
 from . import bonus
+from . import hr_contract
 from . import product_product
 from . import product_template
 from . import project_task

@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="sale.product_template_form_view"/>
         <field name="arch" type="xml">
             <field name="service_tracking" position="after">
-                <field name="bonus_rate" string="Default Technician Expense Rate"/>
+                <field name="bonus_rate" groups="account.group_account_manager" string="Default Technician Expense Rate"/>
             </field>
         </field>
     </record>

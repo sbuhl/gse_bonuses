@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="project_task_view_form_inherit" model="ir.ui.view">
+        <field name="name">project.task.form.inherit</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <field name="date_assign" position="after">
+                <field name="disallow_transport_expenses" groups="account.group_account_manager"/>
+                <field name="disallow_transport_expenses_reason" attrs="{'invisible': [('disallow_transport_expenses', '=', False)]}" groups="account.group_account_manager"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

@@ -1,8 +1,11 @@
-from odoo import models
+from odoo import fields, models
 
 
 class ProjectTask(models.Model):
     _inherit = 'project.task'
+
+    disallow_transport_expenses = fields.Boolean("Exclude from Technician Transport Expenses")
+    disallow_transport_expenses_reason = fields.Text("Reason", tracking=True)
 
     def write(self, vals):
         res = super().write(vals)
