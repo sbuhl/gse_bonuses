@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_gse_bonus_form" model="ir.ui.view">
+        <field name="name">gse.bonus.form</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <form string="Bonuses" class="oe_form_nomargin">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_invoices" class="oe_stat_button" icon="fa-gift" attrs="{'invisible': [('vendor_bill_move_count', '=', 0)]}" groups="account.group_account_manager">
+                            <field name="vendor_bill_move_count" widget="statinfo" string="Invoices"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_id" readonly="1"/>
+                            <field name="timesheet_id" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="currency_id" readonly="1"/>
+                            <field name="amount" readonly="1"/>
+                            <field name="order_id" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_gse_bonus_tree" model="ir.ui.view">
+        <field name="name">gse.bonus.tree</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="create_date"/>
+                <field name="timesheet_id"/>
+                <field name="employee_id"/>
+                <field name="currency_id"/>
+                <field name="amount" string="Bonus" sum="Bonus Total"/>
+                <field name="order_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_gse_bonus_pivot" model="ir.ui.view">
+        <field name="name">gse.bonus.pivot</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <pivot string="Bonuses">
+                <field name="create_date" type="row" interval="week"/>
+                <field name="employee_id" type="col"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_gse_bonus_pivot_graph" model="ir.ui.view">
+        <field name="name">gse.bonus.graph</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <graph string="Bonuses" stacked="True">
+                <field name="create_date" type="row" interval="week"/>
+                <field name="amount" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_gse_bonus_search" model="ir.ui.view">
+        <field name="name">gse.bonus.search</field>
+        <field name="model">gse.bonus</field>
+        <field name="arch" type="xml">
+            <search string="Search Bonus">
+                <field name="order_id"/>
+                <field name="employee_id"/>
+                <separator/>
+                <group expand="0" name="group_by" string="Group By">
+                    <filter name="group_user" string="User" domain="[]" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_order" string="Order" domain="[]" context="{'group_by': 'order_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_gse_bonus" model="ir.actions.act_window">
+        <field name="name">Bonuses</field>
+        <field name="res_model">gse.bonus</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="context">{
+            'create': False,
+        }</field>
+    </record>
+
+    <record id="action_view_invoices" model="ir.actions.act_window">
+        <field name="name">Invoices</field>
+        <field name="res_model">account.move</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="context">{
+            'create': False,
+        }</field>
+    </record>
+
+    <!-- Menu Items in Sales (sale_management) and Field Services (industry_fsm) -->
+    <menuitem id="menu_bonus_sale"
+        name="Technicians"
+        parent="sale.sale_menu_root"
+        sequence="45"
+        action="gse_bonuses.action_gse_bonus"
+        />
+    <menuitem id="menu_bonus_fsm"
+        name="Technicians"
+        parent="industry_fsm.fsm_menu_root"
+        sequence="45"
+        action="gse_bonuses.action_gse_bonus"
+        />
+
+</odoo>
