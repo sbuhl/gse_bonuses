@@ -122,14 +122,14 @@ class Bonus(models.Model):
             # eg 2.25 for 2h15min
             task_total_hours = labor_task.total_hours_spent
             # convert in company currency
-            labor_price_total = labor_order_line.currency_id._convert(
-                labor_order_line.price_total,
+            labor_price_subtotal = labor_order_line.currency_id._convert(
+                labor_order_line.price_subtotal,
                 order.company_id.currency_id,
                 order.company_id,
                 fields.Date.today()
             )
             # eg 300$ / 10% = 30$
-            reward_to_distribute = (labor_price_total * labor_order_line.product_id.get_bonus_rate()) / 100
+            reward_to_distribute = (labor_price_subtotal * labor_order_line.product_id.get_bonus_rate()) / 100
 
             if not task_total_hours or not reward_to_distribute:
                 # There might be no timesheet encoded, or 0% set on product AND
@@ -182,7 +182,7 @@ class Bonus(models.Model):
             ):
                 # convert in company currency
                 transport_total = transport_order_line.currency_id._convert(
-                    transport_order_line.price_total,
+                    transport_order_line.price_subtotal,
                     order.company_id.currency_id,
                     order.company_id,
                     fields.Date.today()
