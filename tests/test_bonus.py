@@ -343,6 +343,24 @@ class TestBonus(common.TransactionCase):
         # can also generate bonuses
         pass
 
+    def test_06_bonus_contract_not_allow_bonuses(self):
+        existing_bonuses = self.env['gse.bonus'].search([])
+        self.employee1.contract_id.allow_transport_expenses = False
+        self.employee2.contract_id.allow_transport_expenses = False
+        self.simulate_bonus_flow()
+        bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
+        self.assertFalse(bonuses_flow1, "no bonuses should have been created because contract doesn't allow it")
+
+        self.employee2.contract_id.allow_transport_expenses = True
+        before_bonuses = self.env['gse.bonus'].search_count([])
+        self.simulate_bonus_flow()
+        self.assertEqual(self.env['gse.bonus'].search_count([]), before_bonuses + 1, "1 bonus for employee 2 should have been created")
+
+        self.employee1.contract_id.allow_transport_expenses = True
+        before_bonuses = self.env['gse.bonus'].search_count([])
+        self.simulate_bonus_flow()
+        self.assertEqual(self.env['gse.bonus'].search_count([]), before_bonuses + 3, "2 bonus for employee 1 and 1 bonus for employee 2 should have been created")
+
     # def test_shortcut_commit(self):
     #     self.simulate_bonus_flow()
     #     self.env.cr.commit()
