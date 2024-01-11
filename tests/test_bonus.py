@@ -64,6 +64,20 @@ class TestBonus(common.TransactionCase):
             'name': 'Employee 2',
             'address_home_id': self.partner2.id,
         })
+        self.env['hr.contract'].create({
+            'name': 'Contract',
+            'employee_id': self.employee1.id,
+            'state': 'open',
+            'wage': 1,
+            'allow_transport_expenses': True,
+        })
+        self.env['hr.contract'].create({
+            'name': 'Contract',
+            'employee_id': self.employee2.id,
+            'state': 'open',
+            'wage': 1,
+            'allow_transport_expenses': True,
+        })
 
     def get_vendor_bill(self, bonuses):
         """ Given some bonuses, return the DRAFT vendor bill for the partner
@@ -101,6 +115,7 @@ class TestBonus(common.TransactionCase):
             'product_id': self.product_order_task_labor_generator.id,
             'product_uom_qty': 1,
             'order_id': sale_order.id,
+            'tax_id': [(6, 0, self.env['account.tax'].search([('type_tax_use', '=', 'sale')], limit=1).ids)],
         })
         so_line_order_task_labor_installation = SaleOrderLine.create({
             'product_id': self.product_order_task_labor_installation.id,
@@ -316,7 +331,8 @@ class TestBonus(common.TransactionCase):
         # Simulate flow
         sale_order, _, _, _, _ = self.simulate_bonus_flow(so_partner=partner)
         bonuses_flow1 = self.env['gse.bonus'].search([]) - existing_bonuses
-        self.assertEqual(sale_order.amount_total, 196892.0)
+        self.assertEqual(sale_order.amount_untaxed, 196892.0)
+        self.assertEqual(sale_order.amount_total, 219042.0)
         self.assertEqual(sale_order.currency_id, currency_RWF)
         self.assertNotEqual(sale_order.currency_id, sale_order.company_id.currency_id)
         self.assertEqual(bonuses_flow1[0].currency_id, sale_order.company_id.currency_id)
@@ -327,6 +343,6 @@ class TestBonus(common.TransactionCase):
         # can also generate bonuses
         pass
 
-    def test_shortcut_commit(self):
-        self.simulate_bonus_flow()
-        self.env.cr.commit()
+    # def test_shortcut_commit(self):
+    #     self.simulate_bonus_flow()
+    #     self.env.cr.commit()
