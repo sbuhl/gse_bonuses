@@ -91,7 +91,7 @@ class TestBonus(common.TransactionCase):
             ('state', '=', 'draft'),
         ])
 
-    def simulate_bonus_flow(self, add_timesheets=True, pay_invoice=True, so_partner=None):
+    def simulate_bonus_flow(self, add_timesheets=True, pay_invoice=True, so_partner=None, disallow_task=False):
         """ Simulate the full complete flow related to bonuses:
         - Create a SO with 2 labor lines
         - Validate the SO, which generates 2 tasks
@@ -127,6 +127,10 @@ class TestBonus(common.TransactionCase):
         # Generate some timesheet for the service task
         task_labor_generator = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_generator.id)])
         task_labor_installation = self.env['project.task'].search([('sale_line_id', '=', so_line_order_task_labor_installation.id)])
+
+        if disallow_task:
+            task_labor_generator.disallow_transport_expenses = True
+            task_labor_installation.disallow_transport_expenses = True
 
         timesheet1 = timesheet2 = timesheet3 = AccountAnalyticLine
         if add_timesheets:
@@ -360,6 +364,12 @@ class TestBonus(common.TransactionCase):
         before_bonuses = self.env['gse.bonus'].search_count([])
         self.simulate_bonus_flow()
         self.assertEqual(self.env['gse.bonus'].search_count([]), before_bonuses + 3, "2 bonus for employee 1 and 1 bonus for employee 2 should have been created")
+
+    def test_07_bonus_task_not_allow_bonuses(self):
+        existing_bonuses = self.env['gse.bonus'].search([])
+        self.simulate_bonus_flow(disallow_task=True)
+        bonuses_flow = self.env['gse.bonus'].search([]) - existing_bonuses
+        self.assertFalse(bonuses_flow, "no bonuses should have been created because tasks doesn't allow it")
 
     # def test_shortcut_commit(self):
     #     self.simulate_bonus_flow()
