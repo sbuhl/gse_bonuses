@@ -178,7 +178,7 @@ class Bonus(models.Model):
         if involved_employees:
             for transport_order_line in order.order_line.filtered(
                 # TODO: Something better that "no task"?
-                lambda line: not line.task_id and line.product_id.get_bonus_rate()
+                lambda line: not line.task_id and line.product_id and line.product_id.get_bonus_rate()
             ):
                 # convert in company currency
                 transport_total = transport_order_line.currency_id._convert(

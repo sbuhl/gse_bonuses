@@ -122,6 +122,11 @@ class TestBonus(common.TransactionCase):
             'product_uom_qty': 1,
             'order_id': sale_order.id,
         })
+        SaleOrderLine.create({
+            'name': 'This is a section',
+            'order_id': sale_order.id,
+            'display_type': 'line_section',
+        })
         sale_order.action_confirm()
 
         # Generate some timesheet for the service task
