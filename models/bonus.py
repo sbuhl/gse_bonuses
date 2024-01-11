@@ -90,8 +90,8 @@ class Bonus(models.Model):
         # - be fully delivered
         # - have its related labor service tasks done (related SOL will be
         #   marked as delivered, so it should be covered by previous point)
-        if any([move_state != 'paid' for move_state in order.invoice_ids.mapped('payment_state')]):
-            # Not all invoices are fully paid
+        if any([move_state not in ('paid', 'reversed') for move_state in order.invoice_ids.mapped('payment_state')]):
+            # Not all invoices are fully paid or reversed
             return
         if any(line for line in order.order_line if line.product_uom_qty != line.qty_invoiced):
             # Not all products have been invoiced
@@ -253,6 +253,7 @@ class Bonus(models.Model):
         self.vendor_bill_move_line_ids = [Command.link(move_line.id)]
 
     def revert(self):
+        self = self.with_context(skip_invoice_sync=False)
         """ Revert a bonus:
         - If it's already paid, it should generate a vendor bill credit note
           with the same amount
