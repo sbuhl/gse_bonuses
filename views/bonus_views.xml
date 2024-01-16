@@ -4,7 +4,7 @@
         <field name="name">gse.bonus.form</field>
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
-            <form string="Bonuses" class="oe_form_nomargin">
+            <form string="Technician Transport Expenses" class="oe_form_nomargin">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button type="object" name="action_view_invoices" class="oe_stat_button" icon="fa-gift" attrs="{'invisible': [('vendor_bill_move_count', '=', 0)]}" groups="account.group_account_manager">
@@ -41,7 +41,7 @@
                 <field name="timesheet_id"/>
                 <field name="employee_id"/>
                 <field name="currency_id"/>
-                <field name="amount" string="Bonus" sum="Bonus Total"/>
+                <field name="amount" string="Transport Amount" sum="Transport Total"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
         </field>
@@ -51,7 +51,7 @@
         <field name="name">gse.bonus.pivot</field>
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
-            <pivot string="Bonuses">
+            <pivot string="Technician Transport Expenses">
                 <field name="create_date" type="row" interval="week"/>
                 <field name="employee_id" type="col"/>
                 <field name="amount" type="measure"/>
@@ -63,7 +63,7 @@
         <field name="name">gse.bonus.graph</field>
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
-            <graph string="Bonuses" stacked="True">
+            <graph string="Technician Transport Expenses" stacked="True">
                 <field name="create_date" type="row" interval="week"/>
                 <field name="amount" type="measure"/>
             </graph>
@@ -74,7 +74,7 @@
         <field name="name">gse.bonus.search</field>
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
-            <search string="Search Bonus">
+            <search string="Search Technician Transport Expenses">
                 <field name="order_id"/>
                 <field name="employee_id"/>
                 <separator/>
@@ -87,7 +87,7 @@
     </record>
 
     <record id="action_gse_bonus" model="ir.actions.act_window">
-        <field name="name">Bonuses</field>
+        <field name="name">Technician Transport Expenses</field>
         <field name="res_model">gse.bonus</field>
         <field name="view_mode">tree,form,pivot,graph</field>
         <field name="context">{
