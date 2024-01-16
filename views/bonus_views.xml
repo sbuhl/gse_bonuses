@@ -35,12 +35,13 @@
         <field name="model">gse.bonus</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="order_date">
+                <field name="order_id"/>
                 <field name="create_date"/>
                 <field name="timesheet_id"/>
                 <field name="employee_id"/>
                 <field name="currency_id"/>
                 <field name="amount" string="Bonus" sum="Bonus Total"/>
-                <field name="order_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
             </tree>
         </field>

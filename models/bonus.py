@@ -17,6 +17,7 @@ class Bonus(models.Model):
     so_line = fields.Many2one('sale.order.line', required=1, copy=True)
     employee_id = fields.Many2one('hr.employee', required=1, copy=True)
     order_id = fields.Many2one(related='so_line.order_id', store=True, required=1, copy=True)
+    order_date = fields.Datetime(related='order_id.date_order', store=True)
     company_id = fields.Many2one(related='order_id.company_id')
     currency_id = fields.Many2one(related='company_id.currency_id')
     amount = fields.Monetary(string='Amount', required=1)
@@ -175,11 +176,12 @@ class Bonus(models.Model):
             assert task_total_hours == total_timesheet_unit_amount, "Total hours spent on task does not match timesheet sum."
 
         # Generate bonus for every transport products
-        if involved_employees:
+        if involved_employees:                
             for transport_order_line in order.order_line.filtered(
-                # TODO: Something better that "no task"?
-                lambda line: not line.task_id and line.product_id and line.product_id.get_bonus_rate()
+                lambda line: line.product_id.type == 'service' 
+                    and line.product_id.bonus_rate > 0
             ):
+    
                 # convert in company currency
                 transport_total = transport_order_line.currency_id._convert(
                     transport_order_line.price_subtotal,
